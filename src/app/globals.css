@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  background-color: #f1f5f9;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-background text-slate-900 antialiased;
+}
+
+* {
+  @apply outline-offset-2;
+}
+
+a {
+  @apply text-primary transition-all duration-150;
+}
+
+button:focus-visible,
+input:focus-visible {
+  @apply ring-2 ring-blue-400 ring-offset-2 ring-offset-white;
+}
