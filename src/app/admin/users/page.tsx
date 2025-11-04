@@ -17,14 +17,9 @@ type EditForm = {
   role: Role;
 };
 
-const initialMock: User[] = [
-  { id: "u_1", email: "andrew@demo.com", role: "admin" },
-  { id: "u_2", email: "bianca@demo.com", role: "user" },
-  { id: "u_3", email: "carlos@demo.com", role: "user" },
-];
-
 export default function UsersPage() {
-  const [users, setUsers] = useState<User[]>(initialMock);
+  // awalnya pakai mock, sekarang mulai dari []
+  const [users, setUsers] = useState<User[]>([]);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<FormMode>("add");
@@ -35,6 +30,37 @@ export default function UsersPage() {
   });
   const [editForm, setEditForm] = useState<EditForm>({ id: "", role: "user" });
   const formRef = useRef<HTMLDivElement | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // ambil ke route Next yang sudah kamu siapkan
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch("/api/admin/users", {
+        method: "GET",
+      });
+      const json = await res.json();
+
+      // kalau backend balikin { data: [...] }
+      const arr = Array.isArray(json.data) ? json.data : json;
+      const normalized: User[] = arr.map((u: any) => ({
+        id: String(u.id),
+        email: u.email,
+        role: (u.role as Role) ?? "user",
+      }));
+
+      setUsers(normalized);
+    } catch (err) {
+      console.error("gagal fetch users", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // load pertama
+  useEffect(() => {
+    loadUsers();
+  }, []);
 
   // Tutup modal jika klik di luar
   useEffect(() => {
@@ -56,8 +82,14 @@ export default function UsersPage() {
   }, [users, query]);
 
   // Pecah menjadi admins & users
-  const admins = useMemo(() => filtered.filter((u) => u.role === "admin"), [filtered]);
-  const normals = useMemo(() => filtered.filter((u) => u.role === "user"), [filtered]);
+  const admins = useMemo(
+    () => filtered.filter((u) => u.role === "admin"),
+    [filtered]
+  );
+  const normals = useMemo(
+    () => filtered.filter((u) => u.role === "user"),
+    [filtered]
+  );
 
   function resetForms() {
     setAddForm({ email: "", password: "", confirmPassword: "" });
@@ -76,8 +108,8 @@ export default function UsersPage() {
     setOpen(true);
   }
 
-  // ADD (email + password + confirm)
-  function submitAdd() {
+  // ADD -> POST /api/admin/users
+  async function submitAdd() {
     const email = addForm.email.trim();
     const password = addForm.password;
     const confirmPassword = addForm.confirmPassword;
@@ -94,33 +126,79 @@ export default function UsersPage() {
       alert("Password dan konfirmasi password tidak sama.");
       return;
     }
-    const emailTaken = users.some(
-      (u) => u.email.toLowerCase() === email.toLowerCase()
-    );
-    if (emailTaken) {
-      alert("Email sudah digunakan.");
-      return;
+
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          role: "user", // default user
+        }),
+      });
+
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(json.message || "Gagal membuat user");
+        return;
+      }
+
+      await loadUsers();
+      setOpen(false);
+      resetForms();
+    } catch (err) {
+      console.error(err);
+      alert("Terjadi kesalahan saat membuat user");
     }
-
-    const id = `u_${Math.random().toString(36).slice(2, 8)}`;
-    setUsers((prev) => [{ id, email, role: "user" }, ...prev]);
-    setOpen(false);
-    resetForms();
   }
 
-  // EDIT (ubah role saja)
-  function submitEdit() {
+  // EDIT (ubah role saja) -> PATCH /api/admin/users/:id
+  async function submitEdit() {
     if (!editForm.id) return;
-    setUsers((prev) =>
-      prev.map((u) => (u.id === editForm.id ? { ...u, role: editForm.role } : u))
-    );
-    setOpen(false);
-    resetForms();
+    try {
+      const res = await fetch(`/api/admin/users/${editForm.id}`, {
+        method: "PATCH", // sesuaikan kalau di BE kamu pakai PUT
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          role: editForm.role,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(json.message || "Gagal mengubah user");
+        return;
+      }
+      await loadUsers();
+      setOpen(false);
+      resetForms();
+    } catch (err) {
+      console.error(err);
+      alert("Terjadi kesalahan saat mengubah user");
+    }
   }
 
-  function deleteUser(id: string) {
+  // DELETE -> DELETE /api/admin/users/:id
+  async function deleteUser(id: string) {
     if (!confirm("Hapus user ini?")) return;
-    setUsers((prev) => prev.filter((u) => u.id !== id));
+    try {
+      const res = await fetch(`/api/admin/users/${id}`, {
+        method: "DELETE",
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(json.message || "Gagal menghapus user");
+        return;
+      }
+      await loadUsers();
+    } catch (err) {
+      console.error(err);
+      alert("Terjadi kesalahan saat menghapus user");
+    }
   }
 
   return (
@@ -162,12 +240,30 @@ export default function UsersPage() {
         </div>
 
         {/* Tabel Admins */}
-        <UsersTable title="Admins" items={admins} onEdit={openEdit} onDelete={deleteUser} />
+        {loading ? (
+          <div className="rounded-2xl bg-white p-6 text-sm text-slate-500">
+            Loading users...
+          </div>
+        ) : (
+          <>
+            <UsersTable
+              title="Admins"
+              items={admins}
+              onEdit={openEdit}
+              onDelete={deleteUser}
+            />
 
-        <div className="my-6" />
+            <div className="my-6" />
 
-        {/* Tabel Users */}
-        <UsersTable title="Users" items={normals} onEdit={openEdit} onDelete={deleteUser} />
+            {/* Tabel Users */}
+            <UsersTable
+              title="Users"
+              items={normals}
+              onEdit={openEdit}
+              onDelete={deleteUser}
+            />
+          </>
+        )}
       </div>
 
       {/* Modal Add / Edit */}

@@ -25,7 +25,7 @@ export default function DataTable({ leads }: DataTableProps) {
           <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
             <HeaderCell>Company</HeaderCell>
             <HeaderCell>Phone</HeaderCell>
-            <HeaderCell>Website</HeaderCell>
+            <HeaderCell>Links</HeaderCell>
             <HeaderCell>Rating</HeaderCell>
             <HeaderCell>Reviews</HeaderCell>
             <HeaderCell>Type Bussiness</HeaderCell>

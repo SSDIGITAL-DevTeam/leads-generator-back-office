@@ -19,26 +19,6 @@ const SEARCH_KEYS: Array<keyof Lead> = [
   "type_bussiness",
 ];
 
-function generateMockLeads(total: number): Lead[] {
-  return Array.from({ length: total }, (_, i) => ({
-    id: `seed-${i + 1}`,
-    name: `Demo Company ${i + 1}`,
-    email: "https://demo.site",
-    phone: "+62 812-0000-0000",
-    company: "Jl. Demo No. 123, Jakarta",
-    address: "Jl. Demo No. 123, Jakarta",
-    location: "Jakarta, Indonesia",
-    rating: 5,
-    reviews: 100 + i,
-    type_business: "cafe",
-    type_bussiness: "cafe",
-    typeBussiness: "cafe",
-    links: {
-      website: "https://demo.site",
-    },
-  }));
-}
-
 function normalizeCompaniesToLeads(rows: any[]): Lead[] {
   return rows.map((item: any, index: number) => {
     const company = item.company ?? `Company ${index + 1}`;
@@ -108,7 +88,9 @@ function normalizeCompaniesToLeads(rows: any[]): Lead[] {
 }
 
 export default function AdminDashboard() {
-  const [leads, setLeads] = useState<Lead[]>(() => generateMockLeads(20));
+  // tidak ada data default
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(INITIAL_PAGE_SIZE);
@@ -125,11 +107,15 @@ export default function AdminDashboard() {
           ? res
           : [];
         const normalized = normalizeCompaniesToLeads(companies);
-        if (mounted && normalized.length) {
+        if (mounted) {
           setLeads(normalized);
         }
       } catch (err) {
         console.error("failed to fetch /api/admin/companies", err);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
       }
     })();
 
@@ -213,62 +199,73 @@ export default function AdminDashboard() {
   };
 
   return (
-    // ⭐ container biar lebar sama dengan topper
     <div className="mx-auto w-full max-w-7xl px-4 lg:px-6">
       <div className="flex flex-col gap-8">
         <section className="rounded-3xl bg-white p-8 shadow-card">
-          <div className="flex flex-col gap-4 pb-6">
-            <div>
-              <h1 className="text-2xl font-semibold text-slate-900">
-                All Data Leads
-              </h1>
-              <p className="mt-1 text-sm text-slate-500">
-                Search, filter, and enrich your pipeline insights.
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div className="w-full md:max-w-md">
-                <SearchInput
-                  value={search}
-                  onChange={handleSearchChange}
-                  placeholder="Search company, website, address, or location..."
-                />
+            <div className="flex flex-col gap-4 pb-6">
+              <div>
+                <h1 className="text-2xl font-semibold text-slate-900">
+                  All Data Leads
+                </h1>
+                <p className="mt-1 text-sm text-slate-500">
+                  Search, filter, and enrich your pipeline insights.
+                </p>
               </div>
 
-              <button
-                onClick={handleDownload}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#2647D9] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#2451CC]"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.6}
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="w-full md:max-w-md">
+                  <SearchInput
+                    value={search}
+                    onChange={handleSearchChange}
+                    placeholder="Search company, website, address, or location..."
+                  />
+                </div>
+
+                <button
+                  onClick={handleDownload}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#2647D9] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#2451CC]"
+                  disabled={loading || !filteredLeads.length}
                 >
-                  <path d="M12 3v12" strokeLinecap="round" />
-                  <path d="m7 10 5 5 5-5" strokeLinecap="round" />
-                  <path d="M5 21h14" strokeLinecap="round" />
-                </svg>
-                Download
-              </button>
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1.6}
+                  >
+                    <path d="M12 3v12" strokeLinecap="round" />
+                    <path d="m7 10 5 5 5-5" strokeLinecap="round" />
+                    <path d="M5 21h14" strokeLinecap="round" />
+                  </svg>
+                  Download
+                </button>
+              </div>
             </div>
-          </div>
 
-          <DataTable leads={currentLeads} />
+            {/* bagian tabel */}
+            {loading ? (
+              <div className="mb-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500">
+                Sedang memuat data...
+              </div>
+            ) : filteredLeads.length === 0 ? (
+              <div className="mb-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500">
+                Belum ada data.
+              </div>
+            ) : (
+              <DataTable leads={currentLeads} />
+            )}
 
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            pageSize={pageSize}
-            totalItems={filteredLeads.length}
-            startEntry={filteredLeads.length ? startEntry : 0}
-            endEntry={filteredLeads.length ? endEntry : 0}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={setPageSize}
-            pageSizeOptions={[10, 25, 50, 100]}
-          />
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={filteredLeads.length}
+              startEntry={filteredLeads.length ? startEntry : 0}
+              endEntry={filteredLeads.length ? endEntry : 0}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+              pageSizeOptions={[10, 25, 50, 100]}
+            />
         </section>
       </div>
     </div>
