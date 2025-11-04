@@ -1,41 +1,76 @@
+// src/app/login/page.tsx
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
-  authenticate,
+  hasAuthCookie,
   getAuthStatus,
   persistAuthStatus,
 } from "@/lib/auth";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // kalau tidak ada ?from=... kita pakai default /admin
+  const from = searchParams.get("from") || "/admin";
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // kalau udah punya cookie / udah login, jangan biarkan di halaman login
   useEffect(() => {
-    if (getAuthStatus()) {
-      router.replace("/admin");
+    if (hasAuthCookie() || getAuthStatus()) {
+      router.replace(from as unknown as any);
     }
-  }, [router]);
+  }, [router, from]);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
     setLoading(true);
 
-    const success = authenticate(email, password);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
 
-    if (success) {
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        setError(
+          data?.message ||
+            "Login gagal. Periksa email / password kamu."
+        );
+        return;
+      }
+
+      // simpan flag login di localStorage
       persistAuthStatus();
-      router.push("/admin");
-    } else {
-      setError("Invalid credentials. Try admin@demo.com / admin123.");
-    }
 
-    setLoading(false);
+      // kalau backend kirim data user, simpan buat header / dropdown
+      if (data?.user) {
+        localStorage.setItem("user", JSON.stringify(data.user));
+      }
+
+      // balik ke halaman yang tadinya diminta
+      router.replace(from as unknown as any);
+    } catch (err) {
+      console.error(err);
+      setError("Terjadi kesalahan jaringan. Coba lagi.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -50,7 +85,7 @@ export default function LoginPage() {
               Lead Generator Admin
             </h1>
             <p className="mt-2 text-sm text-slate-600">
-              Sign in with the demo credentials to continue.
+              Sign in with your account to continue.
             </p>
           </div>
         </div>
@@ -74,6 +109,7 @@ export default function LoginPage() {
               placeholder="admin@demo.com"
             />
           </div>
+
           <div className="space-y-2">
             <label
               htmlFor="password"
@@ -89,7 +125,7 @@ export default function LoginPage() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm transition focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
-              placeholder="admin123"
+              placeholder="••••••••"
             />
           </div>
 

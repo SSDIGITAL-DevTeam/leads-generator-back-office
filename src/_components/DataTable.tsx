@@ -22,15 +22,14 @@ export default function DataTable({ leads }: DataTableProps) {
       <table className="min-w-full divide-y divide-slate-100">
         <thead className="bg-slate-50">
           <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-            <HeaderCell>Country</HeaderCell>
+            <HeaderCell>Company</HeaderCell>
             <HeaderCell>Phone</HeaderCell>
             <HeaderCell>Website</HeaderCell>
             <HeaderCell>Rating</HeaderCell>
             <HeaderCell>Reviews</HeaderCell>
             <HeaderCell>Type Bussiness</HeaderCell>
             <HeaderCell>Address</HeaderCell>
-            <HeaderCell>City</HeaderCell>
-            <HeaderCell className="text-center">Country</HeaderCell>
+            <HeaderCell>Location</HeaderCell>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -42,36 +41,9 @@ export default function DataTable({ leads }: DataTableProps) {
               <Cell>
                 <p className="font-semibold text-slate-900">{lead.name}</p>
               </Cell>
-              <Cell>{lead.position}</Cell>
-              <Cell>
-                <a
-                  className="text-primary underline-offset-2 hover:underline"
-                  href={`mailto:${lead.email}`}
-                >
-                  {lead.email}
-                </a>
-              </Cell>
               <Cell>{lead.phone}</Cell>
-              <Cell>{lead.company}</Cell>
               <Cell>
-                <Badge>{lead.industry}</Badge>
-              </Cell>
-              <Cell>{lead.size}</Cell>
-              <Cell>{lead.location}</Cell>
-              <Cell className="text-center">
-                <div className="flex items-center justify-center gap-2">
-                  {lead.links.linkedin && (
-                    <a
-                      href={lead.links.linkedin}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
-                      aria-label={`View ${lead.name}'s LinkedIn`}
-                    >
-                      <LinkedInIcon />
-                    </a>
-                  )}
-                  {lead.links.website && (
+                {lead.links?.website && (
                     <a
                       href={lead.links.website}
                       target="_blank"
@@ -82,6 +54,17 @@ export default function DataTable({ leads }: DataTableProps) {
                       <GlobeIcon />
                     </a>
                   )}
+              </Cell>
+              <Cell>{lead.rating}</Cell>
+              <Cell>{lead.reviews}</Cell>
+              <Cell>
+                <Badge>{lead.type_business}</Badge>
+              </Cell>
+              <Cell>{lead.company}</Cell>
+              <Cell className="text-center">
+                <div className="flex items-center justify-center gap-2">
+                  {lead.location}
+                  
                 </div>
               </Cell>
             </tr>

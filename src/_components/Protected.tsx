@@ -1,34 +1,22 @@
+// src/_components/Protected.tsx
 "use client";
 
-import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { getAuthStatus } from "@/lib/auth";
+import { useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { getAuthStatus, hasAuthCookie } from "@/lib/auth";
 
-export default function Protected({
-  children,
-}: {
-  children: ReactNode;
-}) {
+export default function Protected({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const [authorized, setAuthorized] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
-    const isAuthed = getAuthStatus();
-    if (!isAuthed) {
-      router.replace("/login");
-      return;
-    }
-    setAuthorized(true);
-  }, [router]);
+    const loggedIn = hasAuthCookie() || getAuthStatus();
 
-  if (!authorized) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-slate-500">
-        Checking authorization…
-      </div>
-    );
-  }
+    if (!loggedIn) {
+      const redirectTo = pathname || "/";
+      router.replace(`/login?from=${encodeURIComponent(redirectTo)}`);
+    }
+  }, [router, pathname]);
 
   return <>{children}</>;
 }

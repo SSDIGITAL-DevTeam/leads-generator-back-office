@@ -1,30 +1,32 @@
+// src/app/admin/layout.tsx
 "use client";
 
-import type { ReactNode } from "react";
-import Protected from "@/_components/Protected";
-import Topbar from "@/_components/Topbar"; // ⬅️ import topbar kamu
 import { useState } from "react";
+import Protected from "@/_components/Protected";
+import Topbar from "@/_components/Topbar";
 import type { Lead } from "@/types/lead";
 
-export default function AdminLayout({ children }: { children: ReactNode }) {
-  // contoh handler upload (biar bisa dipakai di Topbar)
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  // kalau mau disimpan di sini supaya bisa dipakai di page lain
   const [leads, setLeads] = useState<Lead[]>([]);
 
   const handleUpload = (uploaded: Lead[]) => {
     setLeads(uploaded);
-    console.log("Uploaded leads:", uploaded);
+    // di sini kamu bisa kirim ke context / console / dsb
+    console.log("uploaded leads from topbar:", uploaded);
   };
 
   return (
     <Protected>
       <div className="flex min-h-screen flex-col bg-background">
-        {/* Topbar tetap di atas penuh */}
+        {/* Topbar di atas */}
         <Topbar onUpload={handleUpload} />
-
         {/* Konten utama */}
-        <main className="mx-auto w-full max-w-7xl flex-1 px-6 pb-16 pt-8 md:px-10">
-          {children}
-        </main>
+        <main className="flex-1 p-6">{children}</main>
       </div>
     </Protected>
   );

@@ -1,73 +1,148 @@
+// src/app/admin/page.tsx
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import SearchInput from "@/_components/SearchInput";
 import DataTable from "@/_components/DataTable";
 import Pagination from "@/_components/Pagination";
 import type { Lead } from "@/types/lead";
+import { adminCompaniesService } from "@/service/adminCompanies";
 
 const INITIAL_PAGE_SIZE = 10;
 const SEARCH_KEYS: Array<keyof Lead> = [
   "name",
-  "position",
   "email",
   "company",
+  "address",
   "location",
+  "type_business",
+  "type_bussiness",
 ];
 
 function generateMockLeads(total: number): Lead[] {
-  const firstNames = ["Andrew", "Bianca", "Carlos", "Dewi", "Evelyn", "Farhan"];
-  const lastNames = ["Anderson", "Brown", "Chandra", "Darmadi", "Edwards", "Fischer"];
-  const industries = ["Logistics", "SaaS", "Finance", "Healthcare", "Retail", "Manufacturing"];
-  const positions = ["Marketing Manager", "Sales Director", "Operations Manager"];
-  const cities = ["Jakarta, ID", "Singapore, SG", "Berlin, DE", "Sydney, AU"];
-  const companyPrefixes = ["Logi", "Data", "Market", "Insight", "Quantum"];
-  const companySuffixes = ["Track", "Sphere", "Labs", "Analytics", "Solutions"];
-  const employeeBands = ["1-10", "11-50", "51-200", "201-500", "1000+"];
+  return Array.from({ length: total }, (_, i) => ({
+    id: `seed-${i + 1}`,
+    name: `Demo Company ${i + 1}`,
+    email: "https://demo.site",
+    phone: "+62 812-0000-0000",
+    company: "Jl. Demo No. 123, Jakarta",
+    address: "Jl. Demo No. 123, Jakarta",
+    location: "Jakarta, Indonesia",
+    rating: 5,
+    reviews: 100 + i,
+    type_business: "cafe",
+    type_bussiness: "cafe",
+    // sekalian kita isi camelCase-nya juga
+    typeBussiness: "cafe",
+    links: {
+      website: "https://demo.site",
+    },
+  }));
+}
 
-  return Array.from({ length: total }, (_, i) => {
-    const first = firstNames[i % firstNames.length];
-    const last = lastNames[i % lastNames.length];
-    const company =
-      companyPrefixes[i % companyPrefixes.length] +
-      companySuffixes[i % companySuffixes.length];
-    const emailBase = `${first}.${last}`.toLowerCase();
-    const email = `${emailBase}${i}@${company.toLowerCase()}.com`;
+function normalizeCompaniesToLeads(rows: any[]): Lead[] {
+  return rows.map((item: any, index: number) => {
+    const company = item.company ?? `Company ${index + 1}`;
+    const phone = item.phone ?? "";
+    const website = item.website ?? "";
+
+    const rating =
+      typeof item.rating === "number"
+        ? item.rating
+        : typeof item.raw?.rating === "number"
+        ? item.raw.rating
+        : undefined;
+
+    const reviews =
+      typeof item.reviews === "number"
+        ? item.reviews
+        : typeof item.user_ratings_total === "number"
+        ? item.user_ratings_total
+        : typeof item.raw?.user_ratings_total === "number"
+        ? item.raw.user_ratings_total
+        : undefined;
+
+    const typeBiz =
+      item.type_business ??
+      item.type ??
+      (Array.isArray(item.raw?.types) ? item.raw.types[0] : undefined) ??
+      "—";
+
+    const address = item.address ?? item.raw?.formatted_address ?? "—";
+    const city = item.city ?? "";
+    const country = item.country ?? "";
+    const location =
+      city && country ? `${city}, ${country}` : city || country || "";
+
+    const positionParts: string[] = [];
+    if (typeBiz && typeBiz !== "—") positionParts.push(typeBiz);
+    if (typeof rating === "number") {
+      positionParts.push(
+        typeof reviews === "number"
+          ? `⭐ ${rating} (${reviews})`
+          : `⭐ ${rating}`
+      );
+    }
+    const position = positionParts.join(" · ") || "—";
 
     return {
-      id: `seed-${i + 1}`,
-      name: `${first} ${last}`,
-      position: positions[i % positions.length],
-      email,
-      phone: `+62 8${(310000000 + i * 357).toString().padStart(9, "0")}`,
-      company,
-      industry: industries[i % industries.length],
-      size: employeeBands[i % employeeBands.length],
-      location: cities[i % cities.length],
+      id: item.id?.toString() ?? item.place_id?.toString() ?? `db-${index + 1}`,
+      name: company,
+      position,
+      email: website,
+      phone,
+      company: address,
+      address,
+      city,
+      country,
+      location,
+      rating,
+      reviews,
+      // tiga nama sekaligus supaya cocok dengan kolommu sekarang dan nanti
+      type_business: typeBiz,
+      type_bussiness: typeBiz,
+      typeBussiness: typeBiz,
       links: {
-        linkedin: `https://linkedin.com/in/${emailBase}${i}`,
-        website: `https://www.${company.toLowerCase()}.com`,
+        website: website || undefined,
       },
     };
   });
 }
 
 export default function AdminDashboard() {
-  const [leads, setLeads] = useState<Lead[]>(() => generateMockLeads(250));
+  const [leads, setLeads] = useState<Lead[]>(() => generateMockLeads(20));
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(INITIAL_PAGE_SIZE);
 
-  const normalizedSearch = search.trim().toLowerCase();
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      try {
+        const res = await adminCompaniesService.list();
+        const companies = Array.isArray(res.data) ? res.data : [];
+        const normalized = normalizeCompaniesToLeads(companies);
+        if (mounted && normalized.length) {
+          setLeads(normalized);
+        }
+      } catch (err) {
+        console.error("failed to fetch /api/admin/companies", err);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const filteredLeads = useMemo(() => {
-    if (!normalizedSearch) return leads;
+    const q = search.trim().toLowerCase();
+    if (!q) return leads;
     return leads.filter((lead) =>
-      SEARCH_KEYS.some((key) =>
-        lead[key]?.toString().toLowerCase().includes(normalizedSearch)
-      )
+      SEARCH_KEYS.some((key) => lead[key]?.toString().toLowerCase().includes(q))
     );
-  }, [leads, normalizedSearch]);
+  }, [leads, search]);
 
   const totalPages = Math.max(1, Math.ceil(filteredLeads.length / pageSize));
 
@@ -78,66 +153,63 @@ export default function AdminDashboard() {
 
   const startEntry =
     filteredLeads.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-  const endEntry = Math.min(startEntry + pageSize - 1, filteredLeads.length || 0);
+  const endEntry = Math.min(
+    startEntry + pageSize - 1,
+    filteredLeads.length || 0
+  );
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
     setCurrentPage(1);
   };
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(Math.min(Math.max(page, 1), totalPages));
-  };
-
-  const handlePageSizeChange = (size: number) => {
-    setPageSize(size);
-    setCurrentPage(1);
-  };
-
-  // fungsi download CSV
   const handleDownload = () => {
     if (!filteredLeads.length) return;
 
+    // pakai TAB supaya Excel langsung pecah kolom
+    const DELIM = ";";
+
     const header = [
-      "Name",
-      "Position",
-      "Email",
-      "Phone",
       "Company",
-      "Industry",
-      "Size",
-      "Location",
-      "LinkedIn",
+      "Phone",
       "Website",
+      "Rating",
+      "Reviews",
+      "Type Business",
+      "Address",
+      "Location",
     ];
 
     const rows = filteredLeads
       .map((lead) =>
         [
           lead.name,
-          lead.position,
-          lead.email,
           lead.phone,
-          lead.company,
-          lead.industry,
-          lead.size,
+          lead.links?.website ?? lead.email,
+          lead.rating,
+          lead.reviews,
+          lead.type_bussiness ?? lead.type_business ?? lead.typeBussiness,
+          lead.address ?? lead.company,
           lead.location,
-          lead.links?.linkedin,
-          lead.links?.website,
         ]
-          .map((v) => `"${(v || "").toString().replace(/"/g, '""')}"`)
-          .join(",")
+          // tab-delimited nggak terlalu butuh quote, tapi kita amanin aja
+          .map((v) => (v ?? "").toString().replace(/\r?\n/g, " "))
+          .join(DELIM)
       )
       .join("\n");
 
-    const blob = new Blob([header.join(",") + "\n" + rows], {
-      type: "text/csv;charset=utf-8;",
+    const tsv = header.join(DELIM) + "\n" + rows;
+
+    const blob = new Blob([tsv], {
+      // biar Excel senang
+      type: "text/tab-separated-values;charset=utf-8;",
     });
 
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "leads.csv";
+    // boleh tetap .csv, tapi biar jelas kita bikin .tsv
+    a.download = "companies.csv";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -145,9 +217,7 @@ export default function AdminDashboard() {
   return (
     <div className="flex flex-col gap-8">
       <section className="rounded-3xl bg-white p-8 shadow-card">
-        {/* Header section */}
         <div className="flex flex-col gap-4 pb-6">
-          {/* Title */}
           <div>
             <h1 className="text-2xl font-semibold text-slate-900">
               All Data Leads
@@ -157,19 +227,18 @@ export default function AdminDashboard() {
             </p>
           </div>
 
-          {/* Search + Download in one row */}
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="w-full md:max-w-md">
               <SearchInput
                 value={search}
                 onChange={handleSearchChange}
-                placeholder="Search name, position, email, company, or location..."
+                placeholder="Search company, website, address, or location..."
               />
             </div>
 
             <button
               onClick={handleDownload}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#2E65FF] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#2451CC]"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#2647D9] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#2451CC]"
             >
               <svg
                 viewBox="0 0 24 24"
@@ -178,26 +247,17 @@ export default function AdminDashboard() {
                 stroke="currentColor"
                 strokeWidth={1.6}
               >
-                <path
-                  d="M12 4v11m0 0 4-4m-4 4-4-4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
+                <path d="M12 3v12" strokeLinecap="round" />
+                <path d="m7 10 5 5 5-5" strokeLinecap="round" />
+                <path d="M5 21h14" strokeLinecap="round" />
               </svg>
-              Download Data
+              Download
             </button>
           </div>
         </div>
 
-        {/* Table */}
         <DataTable leads={currentLeads} />
 
-        {/* Pagination */}
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
@@ -205,8 +265,8 @@ export default function AdminDashboard() {
           totalItems={filteredLeads.length}
           startEntry={filteredLeads.length ? startEntry : 0}
           endEntry={filteredLeads.length ? endEntry : 0}
-          onPageChange={handlePageChange}
-          onPageSizeChange={handlePageSizeChange}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
           pageSizeOptions={[10, 25, 50, 100]}
         />
       </section>

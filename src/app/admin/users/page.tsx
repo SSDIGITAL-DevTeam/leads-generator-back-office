@@ -9,6 +9,7 @@ type FormMode = "add" | "edit";
 type AddForm = {
   email: string;
   password: string;
+  confirmPassword: string;
 };
 
 type EditForm = {
@@ -27,7 +28,11 @@ export default function UsersPage() {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<FormMode>("add");
-  const [addForm, setAddForm] = useState<AddForm>({ email: "", password: "" });
+  const [addForm, setAddForm] = useState<AddForm>({
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
   const [editForm, setEditForm] = useState<EditForm>({ id: "", role: "user" });
   const formRef = useRef<HTMLDivElement | null>(null);
 
@@ -55,7 +60,7 @@ export default function UsersPage() {
   const normals = useMemo(() => filtered.filter((u) => u.role === "user"), [filtered]);
 
   function resetForms() {
-    setAddForm({ email: "", password: "" });
+    setAddForm({ email: "", password: "", confirmPassword: "" });
     setEditForm({ id: "", role: "user" });
   }
 
@@ -71,17 +76,22 @@ export default function UsersPage() {
     setOpen(true);
   }
 
-  // ADD (email + password) → default role "user"
+  // ADD (email + password + confirm)
   function submitAdd() {
     const email = addForm.email.trim();
     const password = addForm.password;
+    const confirmPassword = addForm.confirmPassword;
 
-    if (!email || !password) {
-      alert("Email dan password wajib diisi.");
+    if (!email || !password || !confirmPassword) {
+      alert("Email, password, dan konfirmasi password wajib diisi.");
       return;
     }
     if (password.length < 6) {
       alert("Password minimal 6 karakter.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      alert("Password dan konfirmasi password tidak sama.");
       return;
     }
     const emailTaken = users.some(
@@ -169,7 +179,7 @@ export default function UsersPage() {
             </h3>
 
             {mode === "add" ? (
-              // ADD: email + password
+              // ADD: email + password + confirmPassword
               <div className="space-y-3">
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-600">
@@ -178,7 +188,9 @@ export default function UsersPage() {
                   <input
                     type="email"
                     value={addForm.email}
-                    onChange={(e) => setAddForm((s) => ({ ...s, email: e.target.value }))}
+                    onChange={(e) =>
+                      setAddForm((s) => ({ ...s, email: e.target.value }))
+                    }
                     className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
                     placeholder="email@example.com"
                   />
@@ -190,9 +202,28 @@ export default function UsersPage() {
                   <input
                     type="password"
                     value={addForm.password}
-                    onChange={(e) => setAddForm((s) => ({ ...s, password: e.target.value }))}
+                    onChange={(e) =>
+                      setAddForm((s) => ({ ...s, password: e.target.value }))
+                    }
                     className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
-                    placeholder="••••••••"
+                    placeholder="Masukkan password"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-slate-600">
+                    Confirm Password
+                  </label>
+                  <input
+                    type="password"
+                    value={addForm.confirmPassword}
+                    onChange={(e) =>
+                      setAddForm((s) => ({
+                        ...s,
+                        confirmPassword: e.target.value,
+                      }))
+                    }
+                    className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                    placeholder="Ulangi password"
                   />
                 </div>
               </div>

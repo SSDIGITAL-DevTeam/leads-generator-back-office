@@ -1,37 +1,35 @@
-const AUTH_STORAGE_KEY = "lead-admin-auth";
-const ADMIN_EMAIL = "admin@demo.com";
-const ADMIN_PASSWORD = "admin123";
+// src/lib/auth.ts
+const AUTH_COOKIE = "auth_token";
+const AUTH_LOCAL_KEY = "auth:logged-in";
 
-// aktifkan bypass auth di mode pengembangan
-const DEV_BYPASS_AUTH = process.env.NODE_ENV === "development";
-
-export function authenticate(email: string, password: string): boolean {
-  return (
-    email.trim().toLowerCase() === ADMIN_EMAIL &&
-    password === ADMIN_PASSWORD
-  );
+// cek cookie di browser
+export function hasAuthCookie(): boolean {
+  if (typeof document === "undefined") return false;
+  return document.cookie
+    .split(";")
+    .map((c) => c.trim())
+    .some((c) => c.startsWith(`${AUTH_COOKIE}=`));
 }
 
-export function persistAuthStatus(): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(AUTH_STORAGE_KEY, "true");
-}
-
-export function clearAuthStatus(): void {
-  if (typeof window === "undefined") return;
-  localStorage.removeItem(AUTH_STORAGE_KEY);
-}
-
+// ini yang dipakai komponen client
 export function getAuthStatus(): boolean {
-  if (DEV_BYPASS_AUTH) return true; // ⬅️ bypass di mode dev
-
   if (typeof window === "undefined") return false;
-  return localStorage.getItem(AUTH_STORAGE_KEY) === "true";
+
+  // kalau cookie ada, anggap login
+  if (hasAuthCookie()) return true;
+
+  // fallback ke localStorage
+  return window.localStorage.getItem(AUTH_LOCAL_KEY) === "true";
 }
 
-export function getDemoCredentials() {
-  return {
-    email: ADMIN_EMAIL,
-    password: ADMIN_PASSWORD,
-  };
+export function persistAuthStatus() {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(AUTH_LOCAL_KEY, "true");
+}
+
+export function clearAuthStatus() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(AUTH_LOCAL_KEY);
+  // hapus cookie juga
+  document.cookie = `${AUTH_COOKIE}=;path=/;expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 }
