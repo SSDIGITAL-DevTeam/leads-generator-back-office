@@ -6,7 +6,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const search = url.search;
 
-  const beRes = await callBackend(`/admin/companies${search}`, {
+  const beRes = await callBackend(`/admin/companies?per_page=200`, {
     method: "GET",
   });
 
