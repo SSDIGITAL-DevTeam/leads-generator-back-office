@@ -76,7 +76,9 @@ export async function callBackend(
 
   // tempel bearer
   if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+    headers["Authorization"] = token.startsWith("Bearer ")
+      ? token
+      : `Bearer ${token}`;
   }
 
   // tentukan URL final
