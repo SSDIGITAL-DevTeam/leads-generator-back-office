@@ -49,10 +49,16 @@ export default function DataTable({ leads }: DataTableProps) {
                       href={lead.links.website}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
+                      className="inline-flex items-center justify-center"
                       aria-label={`Visit ${lead.company} website`}
                     >
-                      <GlobeIcon />
+                      <Image
+                src="/assets/icons/link.svg"
+                alt="Website"
+                width={25}
+                height={25}
+                className="inline-block"
+              />
                     </a>
                   )}
               </Cell>
@@ -93,17 +99,5 @@ function Cell({ children, className = "" }: {
 }) {
   return (
     <td className={`px-4 py-4 align-middle ${className}`.trim()}>{children}</td>
-  );
-}
-
-function GlobeIcon() {
-  return (
-    <Image
-      src="/assets/icons/link.svg"
-      alt="Website"
-      width={18}
-      height={18}
-      className="inline-block"
-    />
   );
 }
