@@ -1,41 +1,43 @@
 // src/app/api/admin/users/[id]/route.ts
-import { NextResponse } from "next/server";
-import { callBackend } from "../../../../utils/backend";
+import { NextRequest, NextResponse } from "next/server";
 
-type Params = {
-  params: {
-    id: string;
-  };
-};
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
+  "http://localhost:8000"; // sesuaikan
 
-export async function PATCH(req: Request, { params }: Params) {
-  const body = await req.json().catch(() => null);
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const { id } = params;
 
-  const beRes = await callBackend(`/admin/users/${params.id}`, {
-    method: "PATCH",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+  if (!id) {
+    return NextResponse.json(
+      { message: "User id is required" },
+      { status: 400 }
+    );
+  }
 
-  const payload = await beRes.json().catch(() => null);
+  // kalau kamu perlu forward Authorization dari request Next.js ke backend
+  const auth = req.headers.get("authorization") || "";
 
-  return NextResponse.json(
-    payload ?? { status: "error", message: "failed to update user" },
-    { status: beRes.status }
-  );
-}
+  try {
+    const res = await fetch(`${API_BASE}/admin/users/${id}`, {
+      method: "DELETE",
+      headers: {
+        Accept: "application/json",
+        ...(auth ? { Authorization: auth } : {}),
+      },
+      cache: "no-store",
+    });
 
-export async function DELETE(_req: Request, { params }: Params) {
-  const beRes = await callBackend(`/admin/users/${params.id}`, {
-    method: "DELETE",
-  });
+    const data = await res.json().catch(() => null);
 
-  const payload = await beRes.json().catch(() => null);
-
-  return NextResponse.json(
-    payload ?? { status: "error", message: "failed to delete user" },
-    { status: beRes.status }
-  );
+    return NextResponse.json(data ?? { success: res.ok }, { status: res.status });
+  } catch (error) {
+    return NextResponse.json(
+      { message: "Failed to delete user", error: (error as Error).message },
+      { status: 500 }
+    );
+  }
 }
