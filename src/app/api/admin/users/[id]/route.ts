@@ -5,11 +5,13 @@ import { callBackend } from "../../../../utils/backend";
 // PATCH /api/admin/users/[id]
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
+  const { id } = context.params;
+
   const body = await req.json().catch(() => null);
 
-  const beRes = await callBackend(`/admin/users/${params.id}`, {
+  const beRes = await callBackend(`/admin/users/${id}`, {
     method: "PATCH",
     headers: {
       "content-type": "application/json",
@@ -28,9 +30,11 @@ export async function PATCH(
 // DELETE /api/admin/users/[id]
 export async function DELETE(
   _req: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
-  const beRes = await callBackend(`/admin/users/${params.id}`, {
+  const { id } = context.params;
+
+  const beRes = await callBackend(`/admin/users/${id}`, {
     method: "DELETE",
   });
 
