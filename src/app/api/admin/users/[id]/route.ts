@@ -3,12 +3,8 @@ import { NextResponse } from "next/server";
 import { callBackend } from "../../../../utils/backend";
 
 // PATCH /api/admin/users/[id]
-export async function PATCH(
-  req: Request,
-  context: { params: { id: string } }
-) {
-  const { id } = context.params;
-
+export async function PATCH(req: Request, context: any) {
+  const id = context?.params?.id;
   const body = await req.json().catch(() => null);
 
   const beRes = await callBackend(`/admin/users/${id}`, {
@@ -28,11 +24,8 @@ export async function PATCH(
 }
 
 // DELETE /api/admin/users/[id]
-export async function DELETE(
-  _req: Request,
-  context: { params: { id: string } }
-) {
-  const { id } = context.params;
+export async function DELETE(_req: Request, context: any) {
+  const id = context?.params?.id;
 
   const beRes = await callBackend(`/admin/users/${id}`, {
     method: "DELETE",
